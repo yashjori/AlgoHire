@@ -1,6 +1,6 @@
 # AlgoHire Frontend
 
-A beautiful, award-winning frontend for the AlgoHire coding platform built with React, TypeScript, Vite, and Tailwind CSS.
+A futuristic frontend for the AlgoHire coding platform built with React, TypeScript, Vite, and Tailwind CSS.
 
 ## Features
 
