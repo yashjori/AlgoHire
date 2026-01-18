@@ -5,11 +5,6 @@ import { Code2, Clock, TrendingUp, Trophy, ArrowRight, Zap, Target } from 'lucid
 import { problemApi, Problem } from '../services/api'
 import toast from 'react-hot-toast'
 
-const difficultyColors = {
-  EASY: 'from-green-500 to-emerald-600',
-  MEDIUM: 'from-yellow-500 to-orange-600',
-  HARD: 'from-red-500 to-rose-600',
-}
 
 const difficultyBadges = {
   EASY: 'bg-green-500/20 text-green-400 border-green-500/30',
