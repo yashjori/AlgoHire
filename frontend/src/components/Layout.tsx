@@ -1,6 +1,5 @@
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom'
-import { motion } from 'framer-motion'
-import { Code2, Home, Trophy, FileText, Plus, LogOut, User } from 'lucide-react'
+import { Code2, Home, FileText, Plus, LogOut, User } from 'lucide-react'
 import { useAuthStore } from '../store/authStore'
 import toast from 'react-hot-toast'
 

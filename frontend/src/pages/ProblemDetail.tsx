@@ -1,10 +1,9 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import Editor from '@monaco-editor/react'
 import { Play, Trophy, Clock, Code2, CheckCircle2, XCircle, Loader2 } from 'lucide-react'
 import { problemApi, executionApi, Problem, ExecutionRequest } from '../services/api'
-import { useAuthStore } from '../store/authStore'
 import toast from 'react-hot-toast'
 
 export default function ProblemDetail() {
@@ -18,9 +17,6 @@ export default function ProblemDetail() {
   const [solveStartTime] = useState(Date.now())
   const [tabSwitches, setTabSwitches] = useState(0)
   const [copyEvents, setCopyEvents] = useState(0)
-  const startTimeRef = useRef(Date.now())
-
-  const { user } = useAuthStore()
 
   useEffect(() => {
     if (id) {
@@ -41,9 +37,6 @@ export default function ProblemDetail() {
     }
   }
 
-  const handleTabSwitch = () => setTabSwitches(prev => prev + 1)
-  const handleCopy = () => setCopyEvents(prev => prev + 1)
-
   const loadProblem = async () => {
     try {
       if (!id) return
@@ -51,7 +44,7 @@ export default function ProblemDetail() {
       setProblem(data)
       // Set default code template
       if (!code) {
-        setCode(getDefaultCode(data.difficulty))
+        setCode(getDefaultCode())
       }
     } catch (error: any) {
       toast.error('Failed to load problem')
@@ -60,7 +53,7 @@ export default function ProblemDetail() {
     }
   }
 
-  const getDefaultCode = (difficulty?: string) => {
+  const getDefaultCode = () => {
     return `public class Solution {
     public static void main(String[] args) {
         // Your solution here
