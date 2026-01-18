@@ -1,25 +1,24 @@
-# Use official OpenJDK image
 FROM eclipse-temurin:17-jdk-jammy
 
-# Set working directory
 WORKDIR /app
 
-# Copy maven files
+# Copy maven wrapper files
 COPY pom.xml .
 COPY mvnw .
 COPY .mvn .mvn
 
+# 🔥 FIX: give execute permission
+RUN chmod +x mvnw
+
 # Download dependencies
 RUN ./mvnw dependency:go-offline
 
-# Copy source
+# Copy source code
 COPY src src
 
-# Build JAR
+# Build jar
 RUN ./mvnw clean package -DskipTests
 
-# Expose port
 EXPOSE 8080
 
-# Run app
 CMD ["java", "-jar", "target/*.jar"]
