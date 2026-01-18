@@ -18,9 +18,7 @@ export default function ProblemDetail() {
   const [solveStartTime] = useState(Date.now())
   const [tabSwitches, setTabSwitches] = useState(0)
   const [copyEvents, setCopyEvents] = useState(0)
-  const startTimeRef = useRef(Date.now())
 
-  const { user } = useAuthStore()
 
   useEffect(() => {
     if (id) {
@@ -41,9 +39,6 @@ export default function ProblemDetail() {
     }
   }
 
-  const handleTabSwitch = () => setTabSwitches(prev => prev + 1)
-  const handleCopy = () => setCopyEvents(prev => prev + 1)
-
   const loadProblem = async () => {
     try {
       if (!id) return
@@ -60,7 +55,7 @@ export default function ProblemDetail() {
     }
   }
 
-  const getDefaultCode = (difficulty?: string) => {
+  const getDefaultCode = () => {
     return `public class Solution {
     public static void main(String[] args) {
         // Your solution here
