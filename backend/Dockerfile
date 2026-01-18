@@ -2,23 +2,21 @@ FROM eclipse-temurin:17-jdk-jammy
 
 WORKDIR /app
 
-# Copy maven wrapper files
 COPY pom.xml .
 COPY mvnw .
 COPY .mvn .mvn
 
-# 🔥 FIX: give execute permission
 RUN chmod +x mvnw
-
-# Download dependencies
 RUN ./mvnw dependency:go-offline
 
-# Copy source code
 COPY src src
 
 # Build jar
 RUN ./mvnw clean package -DskipTests
 
+# 🔥 Copy jar to fixed name
+RUN cp target/*.jar app.jar
+
 EXPOSE 8080
 
-CMD ["java", "-jar", "target/*.jar"]
+CMD ["java", "-jar", "app.jar"]
