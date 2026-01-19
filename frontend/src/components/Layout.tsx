@@ -15,10 +15,19 @@ export default function Layout() {
   }
 
   const navItems = [
-    { path: '/', icon: Home, label: 'Dashboard' },
-    { path: '/submissions', icon: FileText, label: 'My Submissions' },
-    ...(user?.role === 'RECRUITER' ? [{ path: '/create-problem', icon: Plus, label: 'Create Problem' }] : []),
-  ]
+  { path: '/', icon: Home, label: 'Dashboard' },
+
+  // Candidate-only
+  ...(user?.role === 'CANDIDATE'
+    ? [{ path: '/submissions', icon: FileText, label: 'My Submissions' }]
+    : []),
+
+  // Recruiter-only
+  ...(user?.role === 'RECRUITER'
+    ? [{ path: '/create-problem', icon: Plus, label: 'Create Problem' }]
+    : []),
+]
+
 
   return (
     <div className="min-h-screen flex flex-col">
