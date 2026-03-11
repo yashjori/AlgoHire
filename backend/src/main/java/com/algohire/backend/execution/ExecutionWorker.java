@@ -1,7 +1,5 @@
 package com.algohire.backend.execution;
 
-
-import com.algohire.backend.execution.ExecutionResult;
 import com.algohire.backend.leaderboard.LeaderboardService;
 import com.algohire.backend.submission.Submission;
 import com.algohire.backend.submission.SubmissionRepository;
@@ -33,25 +31,23 @@ public class ExecutionWorker {
     @Scheduled(fixedDelay = 1000)
     public void consumeQueue() {
 
-        String submissionId =
-                redisTemplate.opsForList().leftPop("execution-queue");
-
+        String submissionId = redisTemplate.opsForList().leftPop("execution-queue");
         if (submissionId == null) return;
 
-        Submission submission =
-                submissionRepository.findById(submissionId).orElse(null);
-
+        Submission submission = submissionRepository.findById(submissionId).orElse(null);
         if (submission == null) return;
 
-        ExecutionResult result =
-                codeExecutionService.executeInternal(submission);
+        // FIX: executeInternal runs the code without creating a new Submission document.
+        // We then update the existing PENDING record in-place so the candidate
+        // sees the real verdict instead of it staying stuck as PENDING.
+        ExecutionResult result = codeExecutionService.executeInternal(submission);
 
         submission.setVerdict(result.getVerdict());
         submission.setExecutionTimeMs(result.getExecutionTimeMs());
-
         submissionRepository.save(submission);
 
-        if ("ACCEPTED".equals(result.getVerdict())) {
+        // Only update leaderboard for clean accepted submissions
+        if ("ACCEPTED".equals(result.getVerdict()) && !submission.isSuspicious()) {
             leaderboardService.updateScore(
                     submission.getProblemId(),
                     submission.getCandidateEmail(),
