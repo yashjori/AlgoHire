@@ -10,7 +10,6 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
-import com.algohire.backend.security.JwtUtil;
 
 import java.io.IOException;
 
@@ -34,6 +33,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
         String authHeader = request.getHeader("Authorization");
 
+        // No token — let the request through (permitAll routes will pass, others will be blocked by Spring Security)
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
             return;
@@ -60,16 +60,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 SecurityContextHolder.getContext().setAuthentication(authToken);
             }
         }
-        
-        UserDetails userDetails = userDetailsService.loadUserByUsername(email);
 
-        System.out.println("===== JWT FILTER =====");
-        System.out.println("Token: " + token);
-        System.out.println("Email from token: " + email);
-        System.out.println("Authorities: " + userDetails.getAuthorities());
-        System.out.println("======================");
-
-        
         filterChain.doFilter(request, response);
     }
 }
