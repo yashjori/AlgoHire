@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Code2, Clock, TrendingUp, Trophy, ArrowRight, Zap, Target } from 'lucide-react'
 import { problemApi, Problem } from '../services/api'
+import { useAuthStore } from '../store/authStore'
 import toast from 'react-hot-toast'
 
 const difficultyBadges = {
@@ -14,6 +15,9 @@ const difficultyBadges = {
 export default function Dashboard() {
   const [problems, setProblems] = useState<Problem[]>([])
   const [loading, setLoading] = useState(true)
+  const { user } = useAuthStore()
+
+  const isRecruiter = user?.role === 'RECRUITER'
 
   useEffect(() => {
     loadProblems()
@@ -133,40 +137,51 @@ export default function Dashboard() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}
                 whileHover={{ y: -8, scale: 1.02 }}
-                className="glass rounded-2xl p-6 hover:shadow-2xl transition-all cursor-pointer group"
+                className="glass rounded-2xl p-6 hover:shadow-2xl transition-all group"
               >
-                <Link to={`/problem/${problem.id}`}>
-                  <div className="flex items-start justify-between mb-4">
-                    <h3 className="text-xl font-bold text-white group-hover:text-purple-400 transition-colors">
-                      {problem.title}
-                    </h3>
-                    <span
-                      className={`px-3 py-1 rounded-full text-xs font-semibold border ${difficultyBadges[problem.difficulty as keyof typeof difficultyBadges]}`}
+                <div className="flex items-start justify-between mb-4">
+                  <h3 className="text-xl font-bold text-white group-hover:text-purple-400 transition-colors">
+                    {problem.title}
+                  </h3>
+                  <span
+                    className={`px-3 py-1 rounded-full text-xs font-semibold border ${difficultyBadges[problem.difficulty as keyof typeof difficultyBadges]}`}
+                  >
+                    {problem.difficulty}
+                  </span>
+                </div>
+
+                <p className="text-gray-400 text-sm mb-4 line-clamp-2">
+                  {problem.description}
+                </p>
+
+                <div className="flex items-center gap-4 text-sm text-gray-500 mb-4">
+                  <span className="flex items-center gap-1">
+                    <Clock className="w-4 h-4" />
+                    {problem.timeLimitMs}ms
+                  </span>
+                  <span>{problem.memoryLimitMb}MB</span>
+                </div>
+
+                {/* Action link — differs by role */}
+                <div className="pt-3 border-t border-white/10">
+                  {isRecruiter ? (
+                    // FIX: Recruiters get a direct link to the leaderboard for each problem
+                    <Link
+                      to={`/leaderboard/${problem.id}`}
+                      className="flex items-center gap-1 text-yellow-400 hover:text-yellow-300 font-semibold text-sm transition-colors"
                     >
-                      {problem.difficulty}
-                    </span>
-                  </div>
-
-                  <p className="text-gray-400 text-sm mb-4 line-clamp-2">
-                    {problem.description}
-                  </p>
-
-                  <div className="flex items-center justify-between text-sm text-gray-500">
-                    <div className="flex items-center gap-4">
-                      <span className="flex items-center gap-1">
-                        <Clock className="w-4 h-4" />
-                        {problem.timeLimitMs}ms
-                      </span>
-                      <span>{problem.memoryLimitMb}MB</span>
-                    </div>
-                    <motion.div
-                      whileHover={{ x: 5 }}
-                      className="flex items-center gap-1 text-purple-400 font-semibold"
+                      <Trophy className="w-4 h-4" />
+                      View Leaderboard <ArrowRight className="w-4 h-4" />
+                    </Link>
+                  ) : (
+                    <Link
+                      to={`/problem/${problem.id}`}
+                      className="flex items-center gap-1 text-purple-400 hover:text-purple-300 font-semibold text-sm transition-colors"
                     >
                       Solve <ArrowRight className="w-4 h-4" />
-                    </motion.div>
-                  </div>
-                </Link>
+                    </Link>
+                  )}
+                </div>
               </motion.div>
             ))}
           </div>
@@ -175,4 +190,3 @@ export default function Dashboard() {
     </div>
   )
 }
-
