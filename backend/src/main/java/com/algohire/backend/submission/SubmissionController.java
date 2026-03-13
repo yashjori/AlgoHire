@@ -16,26 +16,27 @@ public class SubmissionController {
         this.repository = repository;
     }
 
-    // Candidate submits code
-//    @PostMapping
-//    @PreAuthorize("hasRole('CANDIDATE')")
-//    public Submission submit(
-//            @RequestBody Submission submission,
-//            Authentication auth
-//    ) {
-//        submission.setCandidateEmail(auth.getName());
-//
-//        // TEMP values — replaced by code execution later
-//        submission.setVerdict("PENDING");
-//        submission.setScore(0);
-//
-//        return repository.save(submission);
-//    }
-
-    // Candidate views own submissions
+    /** Candidate: view own submissions */
     @GetMapping("/me")
     @PreAuthorize("hasRole('CANDIDATE')")
     public List<Submission> mySubmissions(Authentication auth) {
         return repository.findByCandidateEmail(auth.getName());
+    }
+
+    /** Candidate: view own submissions for a specific problem */
+    @GetMapping("/problem/{problemId}")
+    @PreAuthorize("hasRole('CANDIDATE')")
+    public List<Submission> byProblem(@PathVariable String problemId, Authentication auth) {
+        return repository.findByCandidateEmail(auth.getName())
+                .stream()
+                .filter(s -> problemId.equals(s.getProblemId()))
+                .toList();
+    }
+
+    /** Recruiter: view ALL submissions across all candidates */
+    @GetMapping
+    @PreAuthorize("hasRole('RECRUITER')")
+    public List<Submission> allSubmissions() {
+        return repository.findAll();
     }
 }

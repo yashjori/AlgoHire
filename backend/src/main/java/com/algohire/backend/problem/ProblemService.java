@@ -1,7 +1,6 @@
 package com.algohire.backend.problem;
 
 import org.springframework.stereotype.Service;
-
 import java.util.List;
 
 @Service
@@ -22,7 +21,10 @@ public class ProblemService {
     }
 
     public Problem getById(String id) {
-        return repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Problem not found"));
+        return repository.findById(id).orElse(null);
+    }
+
+    public void delete(String id) {
+        repository.deleteById(id);
     }
 }

@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:7
+    container_name: algohire-mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    environment:
+      MONGO_INITDB_DATABASE: algohire
+
+  redis:
+    image: redis:7-alpine
+    container_name: algohire-redis
+    ports:
+      - "6379:6379"
+
+  backend:
+    build: ./backend
+    container_name: algohire-backend
+    ports:
+      - "8080:8080"
+    environment:
+      MONGODB_URI: mongodb://mongodb:27017/algohire
+      MONGODB_DATABASE: algohire
+      JWT_SECRET: change-this-to-a-strong-secret-at-least-32-chars
+      JWT_EXPIRATION: 86400000
+      REDIS_URL: redis://redis:6379
+      FRONTEND_URL: http://localhost:5173
+    depends_on:
+      - mongodb
+      - redis
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock  # needed for code execution
+
+  frontend:
+    build: ./frontend
+    container_name: algohire-frontend
+    ports:
+      - "5173:80"
+    environment:
+      VITE_API_URL: http://localhost:8080
+    depends_on:
+      - backend
+
+volumes:
+  mongo_data:

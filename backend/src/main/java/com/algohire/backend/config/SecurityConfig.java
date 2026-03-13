@@ -16,30 +16,30 @@ import org.springframework.web.cors.CorsConfigurationSource;
 public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
+    private final AuthenticationProvider authenticationProvider;
     private final CorsConfigurationSource corsConfigurationSource;
 
-    public SecurityConfig(JwtAuthFilter jwtAuthFilter, CorsConfigurationSource corsConfigurationSource) {
+    public SecurityConfig(
+            JwtAuthFilter jwtAuthFilter,
+            AuthenticationProvider authenticationProvider,
+            CorsConfigurationSource corsConfigurationSource) {
         this.jwtAuthFilter = jwtAuthFilter;
+        this.authenticationProvider = authenticationProvider;
         this.corsConfigurationSource = corsConfigurationSource;
     }
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-
         http
             .cors(cors -> cors.configurationSource(corsConfigurationSource))
             .csrf(csrf -> csrf.disable())
-            .sessionManagement(session ->
-                session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-            )
+            .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/auth/**").permitAll()
-                .requestMatchers("/recruiter/**").hasAuthority("ROLE_RECRUITER")
-                .requestMatchers("/candidate/**").hasAuthority("ROLE_CANDIDATE")
-                .requestMatchers("/problems/**").authenticated()
-                .requestMatchers("/leaderboard/**").permitAll()
+                .requestMatchers("/leaderboard/**").authenticated()
                 .anyRequest().authenticated()
             )
+            .authenticationProvider(authenticationProvider)
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

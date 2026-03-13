@@ -11,6 +11,7 @@ import org.springframework.data.redis.core.RedisTemplate;
 import java.io.*;
 import java.nio.file.*;
 import java.util.Comparator;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
@@ -26,57 +27,98 @@ public class CodeExecutionService {
             SubmissionRepository submissionRepository,
             LeaderboardService leaderboardService,
             RedisTemplate<String, String> redisTemplate,
-            AntiCheatService antiCheatService
-    ) {
+            AntiCheatService antiCheatService) {
         this.submissionRepository = submissionRepository;
         this.leaderboardService = leaderboardService;
         this.redisTemplate = redisTemplate;
         this.antiCheatService = antiCheatService;
     }
 
-    // -----------------------------------------------------------------------
-    // Public: enqueue (called by ExecutionController)
-    // Saves a PENDING submission immediately and pushes job to Redis queue.
-    // -----------------------------------------------------------------------
-    public String enqueue(ExecutionRequest request) {
+    // ─── Languages ────────────────────────────────────────────────────────────
 
+    private record LangConfig(
+            String dockerImage,
+            String fileName,
+            List<String> compileCmd,   // null if interpreted
+            List<String> runCmd
+    ) {}
+
+    private LangConfig resolveLanguage(String language) {
+        return switch (language.toUpperCase()) {
+            case "JAVA" -> new LangConfig(
+                    "eclipse-temurin:21",
+                    "Solution.java",
+                    List.of("javac", "/app/Solution.java"),
+                    List.of("java", "-cp", "/app", "Solution")
+            );
+            case "PYTHON" -> new LangConfig(
+                    "python:3.11-slim",
+                    "solution.py",
+                    null,
+                    List.of("python3", "/app/solution.py")
+            );
+            case "CPP" -> new LangConfig(
+                    "gcc:12",
+                    "solution.cpp",
+                    List.of("g++", "-O2", "-std=c++17", "-o", "/app/solution", "/app/solution.cpp"),
+                    List.of("/app/solution")
+            );
+            case "JAVASCRIPT" -> new LangConfig(
+                    "node:20-slim",
+                    "solution.js",
+                    null,
+                    List.of("node", "/app/solution.js")
+            );
+            case "TYPESCRIPT" -> new LangConfig(
+                    "node:20-slim",
+                    "solution.ts",
+                    List.of("npx", "ts-node", "--version"), // ts-node pre-installed in image
+                    List.of("npx", "ts-node", "/app/solution.ts")
+            );
+            case "GO" -> new LangConfig(
+                    "golang:1.22-alpine",
+                    "solution.go",
+                    List.of("go", "build", "-o", "/app/solution", "/app/solution.go"),
+                    List.of("/app/solution")
+            );
+            case "RUST" -> new LangConfig(
+                    "rust:1.76-slim",
+                    "solution.rs",
+                    List.of("rustc", "-O", "-o", "/app/solution", "/app/solution.rs"),
+                    List.of("/app/solution")
+            );
+            default -> throw new IllegalArgumentException("Unsupported language: " + language);
+        };
+    }
+
+    // ─── Public: enqueue (async) ──────────────────────────────────────────────
+
+    public String enqueue(ExecutionRequest request) {
         String jobId = UUID.randomUUID().toString();
 
         Submission submission = new Submission();
         submission.setId(jobId);
         submission.setProblemId(request.getProblemId());
-        submission.setCandidateEmail(
-            SecurityContextHolder.getContext().getAuthentication().getName()
-        );
+        submission.setCandidateEmail(SecurityContextHolder.getContext().getAuthentication().getName());
         submission.setLanguage(request.getLanguage());
         submission.setCode(request.getCode());
         submission.setVerdict("PENDING");
-
-        // Persist anti-cheat signals so ExecutionWorker can use them
-        // when deciding whether to update the leaderboard.
         submission.setSolveTimeMs(request.getSolveTimeMs());
         submission.setTabSwitches(request.getTabSwitches());
         submission.setCopyEvents(request.getCopyEvents());
 
-        // Run anti-cheat analysis eagerly on enqueue
         var antiCheat = antiCheatService.analyze(request);
         submission.setSuspicious(antiCheat.suspicious());
         submission.setCheatReason(String.join(", ", antiCheat.reasons()));
 
         submissionRepository.save(submission);
-
         redisTemplate.opsForList().rightPush("execution-queue", jobId);
-
         return jobId;
     }
 
-    // -----------------------------------------------------------------------
-    // Called by ExecutionWorker — builds a request from the stored submission
-    // and runs code WITHOUT creating a new Submission document.
-    // The worker updates the existing PENDING record in-place.
-    // -----------------------------------------------------------------------
-    public ExecutionResult executeInternal(Submission submission) {
+    // ─── Called by ExecutionWorker ────────────────────────────────────────────
 
+    public ExecutionResult executeInternal(Submission submission) {
         ExecutionRequest request = new ExecutionRequest();
         request.setLanguage(submission.getLanguage());
         request.setCode(submission.getCode());
@@ -85,114 +127,131 @@ public class CodeExecutionService {
         request.setSolveTimeMs(submission.getSolveTimeMs());
         request.setTabSwitches(submission.getTabSwitches());
         request.setCopyEvents(submission.getCopyEvents());
-
         return executeOnly(request);
     }
 
-    // -----------------------------------------------------------------------
-    // Runs code against test cases and returns the result WITHOUT persisting
-    // a new Submission document. Safe to call from the async worker.
-    // -----------------------------------------------------------------------
-    public ExecutionResult executeOnly(ExecutionRequest request) {
+    // ─── Core execution engine ────────────────────────────────────────────────
 
+    public ExecutionResult executeOnly(ExecutionRequest request) {
         ExecutionResult result = new ExecutionResult();
         Path tempDir = null;
 
         try {
-            tempDir = Files.createTempDirectory("code-runner");
+            LangConfig lang = resolveLanguage(request.getLanguage());
+            tempDir = Files.createTempDirectory("code-runner-");
+            Path sourceFile = tempDir.resolve(lang.fileName());
+            Files.writeString(sourceFile, request.getCode());
 
-            Path javaFile = tempDir.resolve("Solution.java");
-            Files.writeString(javaFile, request.getCode());
-
-            Process compile = new ProcessBuilder(
-                    "docker", "run", "--rm",
-                    "-v", tempDir.toAbsolutePath() + ":/app",
-                    "eclipse-temurin:21",
-                    "javac", "/app/Solution.java"
-            ).start();
-            compile.waitFor();
-
-            if (compile.exitValue() != 0) {
-                result.setVerdict("COMPILATION_ERROR");
-                result.setError(readStream(compile.getErrorStream()));
-                return result;
+            // ── Compile (if needed) ──────────────────────────────────────────
+            if (lang.compileCmd() != null) {
+                ProcessBuilder compileBuilder = buildDockerProcess(lang.dockerImage(), tempDir, lang.compileCmd());
+                Process compile = compileBuilder.start();
+                compile.waitFor(30, TimeUnit.SECONDS);
+                if (compile.exitValue() != 0) {
+                    result.setVerdict("COMPILATION_ERROR");
+                    result.setError(readStream(compile.getErrorStream()));
+                    return result;
+                }
             }
 
-            long totalExecutionTime = 0;
-            for (TestCaseDTO tc : request.getTestCases()) {
+            // ── Run each test case ───────────────────────────────────────────
+            long totalTime = 0;
+            int passed = 0;
+            int total = request.getTestCases() != null ? request.getTestCases().size() : 0;
 
+            for (TestCaseDTO tc : request.getTestCases()) {
                 long start = System.currentTimeMillis();
 
-                Process run = new ProcessBuilder(
-                        "docker", "run", "--rm", "-i",
-                        "-v", tempDir.toAbsolutePath() + ":/app",
-                        "eclipse-temurin:21",
-                        "java", "-cp", "/app", "Solution"
-                ).start();
+                ProcessBuilder runBuilder = buildDockerProcess(lang.dockerImage(), tempDir, lang.runCmd());
+                Process run = runBuilder.start();
 
-                try (BufferedWriter writer =
-                             new BufferedWriter(new OutputStreamWriter(run.getOutputStream()))) {
+                // Feed input
+                try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(run.getOutputStream()))) {
                     writer.write(tc.getInput());
                     writer.newLine();
+                    writer.flush();
                 }
 
                 boolean finished = run.waitFor(request.getTimeLimitMs(), TimeUnit.MILLISECONDS);
-                long end = System.currentTimeMillis();
-                totalExecutionTime += (end - start);
+                long elapsed = System.currentTimeMillis() - start;
+                totalTime += elapsed;
 
                 if (!finished) {
-                    run.destroy();
-                    result.setVerdict("TLE");
-                    result.setExecutionTimeMs(totalExecutionTime);
+                    run.destroyForcibly();
+                    result.setVerdict("TIME_LIMIT_EXCEEDED");
+                    result.setExecutionTimeMs(totalTime);
+                    result.setTestsPassed(passed);
+                    result.setTestsTotal(total);
+                    return result;
+                }
+
+                if (run.exitValue() != 0) {
+                    result.setVerdict("RUNTIME_ERROR");
+                    result.setError(readStream(run.getErrorStream()));
+                    result.setExecutionTimeMs(totalTime);
+                    result.setTestsPassed(passed);
+                    result.setTestsTotal(total);
                     return result;
                 }
 
                 String output = readStream(run.getInputStream()).trim();
-                if (!output.equals(tc.getExpectedOutput().trim())) {
+                String expected = tc.getExpectedOutput().trim();
+
+                if (!output.equals(expected)) {
                     result.setVerdict("WRONG_ANSWER");
-                    result.setExecutionTimeMs(totalExecutionTime);
+                    result.setExecutionTimeMs(totalTime);
+                    result.setTestsPassed(passed);
+                    result.setTestsTotal(total);
                     return result;
                 }
+                passed++;
             }
 
             result.setVerdict("ACCEPTED");
-            result.setExecutionTimeMs(totalExecutionTime);
+            result.setExecutionTimeMs(totalTime);
+            result.setTestsPassed(passed);
+            result.setTestsTotal(total);
             return result;
 
+        } catch (IllegalArgumentException e) {
+            result.setVerdict("ERROR");
+            result.setError(e.getMessage());
+            return result;
         } catch (Exception e) {
             result.setVerdict("RUNTIME_ERROR");
             result.setError(e.getMessage());
             return result;
-
         } finally {
-            if (tempDir != null) {
-                try {
-                    Files.walk(tempDir)
-                            .sorted(Comparator.reverseOrder())
-                            .map(Path::toFile)
-                            .forEach(File::delete);
-                } catch (IOException ignored) {}
-            }
+            cleanup(tempDir);
         }
     }
 
-    // -----------------------------------------------------------------------
-    // Legacy: direct execute + save in one shot (kept for any direct callers)
-    // -----------------------------------------------------------------------
+    // ─── Legacy: direct execute + save ───────────────────────────────────────
+
     public ExecutionResult execute(ExecutionRequest request) {
         ExecutionResult result = executeOnly(request);
         saveSubmission(request, result);
         return result;
     }
 
+    // ─── Helpers ─────────────────────────────────────────────────────────────
+
+    private ProcessBuilder buildDockerProcess(String image, Path tempDir, List<String> cmd) {
+        List<String> dockerCmd = new java.util.ArrayList<>(List.of(
+                "docker", "run", "--rm", "-i",
+                "--network", "none",               // no network access
+                "--memory", "256m",
+                "--cpus", "0.5",
+                "-v", tempDir.toAbsolutePath() + ":/app",
+                image
+        ));
+        dockerCmd.addAll(cmd);
+        return new ProcessBuilder(dockerCmd);
+    }
+
     private void saveSubmission(ExecutionRequest request, ExecutionResult result) {
-
         Submission submission = new Submission();
-
-        String email = SecurityContextHolder.getContext()
-                .getAuthentication()
-                .getName();
-
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
         submission.setCandidateEmail(email);
         submission.setProblemId(request.getProblemId());
         submission.setLanguage(request.getLanguage());
@@ -206,17 +265,18 @@ public class CodeExecutionService {
         var antiCheat = antiCheatService.analyze(request);
         submission.setSuspicious(antiCheat.suspicious());
         submission.setCheatReason(String.join(", ", antiCheat.reasons()));
-
         submissionRepository.save(submission);
 
-        if ("ACCEPTED".equals(result.getVerdict()) &&
-                (!submission.isSuspicious() || "APPROVED".equals(submission.getReviewStatus()))) {
-            leaderboardService.updateScore(
-                    submission.getProblemId(),
-                    submission.getCandidateEmail(),
-                    submission.getExecutionTimeMs()
-            );
+        if ("ACCEPTED".equals(result.getVerdict()) && !submission.isSuspicious()) {
+            leaderboardService.updateScore(submission.getProblemId(), submission.getCandidateEmail(), submission.getExecutionTimeMs());
         }
+    }
+
+    private void cleanup(Path tempDir) {
+        if (tempDir == null) return;
+        try {
+            Files.walk(tempDir).sorted(Comparator.reverseOrder()).map(Path::toFile).forEach(File::delete);
+        } catch (IOException ignored) {}
     }
 
     private String readStream(InputStream stream) throws IOException {

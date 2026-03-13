@@ -2,7 +2,6 @@ package com.algohire.backend.anticheat;
 
 import com.algohire.backend.execution.ExecutionRequest;
 import org.springframework.stereotype.Service;
-import com.algohire.backend.anticheat.AntiCheatResult;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -11,29 +10,30 @@ import java.util.List;
 public class AntiCheatService {
 
     public AntiCheatResult analyze(ExecutionRequest request) {
-
         List<String> reasons = new ArrayList<>();
 
-        // B️⃣ TIME-BASED CHECK
-        if (request.getSolveTimeMs() < 10_000) { // <10 seconds
-            reasons.add("Solved too fast");
+        long solveMs = request.getSolveTimeMs();
+
+        // Solved impossibly fast (< 5 seconds) AND code is non-trivial
+        if (solveMs < 5_000 && request.getCode() != null && request.getCode().length() > 50) {
+            reasons.add("Solution submitted in under 5 seconds");
         }
 
-        if (request.getCode().length() > 300 && request.getSolveTimeMs() < 20_000) {
-            reasons.add("Large code submitted too quickly");
+        // Large solution (>500 chars) submitted very quickly (<15s)
+        if (request.getCode() != null && request.getCode().length() > 500 && solveMs < 15_000) {
+            reasons.add("Large solution submitted suspiciously fast");
         }
 
-        // D️⃣ CLIENT SIGNALS
-        if (request.getTabSwitches() > 5) {
-            reasons.add("Too many tab switches");
+        // Excessive tab switches (may indicate looking up solutions)
+        if (request.getTabSwitches() > 10) {
+            reasons.add("Excessive tab switches: " + request.getTabSwitches());
         }
 
-        if (request.getCopyEvents() > 2) {
-            reasons.add("Multiple copy-paste events");
+        // Multiple copy events (may indicate pasted code)
+        if (request.getCopyEvents() > 3) {
+            reasons.add("Multiple copy events detected: " + request.getCopyEvents());
         }
 
-        boolean suspicious = !reasons.isEmpty();
-
-        return new AntiCheatResult(suspicious, reasons);
+        return new AntiCheatResult(!reasons.isEmpty(), reasons);
     }
 }

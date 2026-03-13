@@ -1,12 +1,16 @@
 package com.algohire.backend.problem;
 
-import lombok.Data;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import java.util.ArrayList;
 import java.util.List;
 
-@Data
+/**
+ * Problem stored in MongoDB.
+ * testCases are hidden (used for judging only).
+ * sampleTestCases are shown to candidates as examples.
+ */
 @Document(collection = "problems")
 public class Problem {
 
@@ -15,76 +19,67 @@ public class Problem {
 
     private String title;
     private String description;
-    private String difficulty; // EASY, MEDIUM, HARD
+    private String difficulty;          // EASY | MEDIUM | HARD
 
-    private List<TestCase> testCases;
+    private String inputFormat;
+    private String outputFormat;
+    private String constraints;
 
-    public String getId() {
-		return id;
-	}
+    private List<String> tags     = new ArrayList<>();
+    private List<String> hints    = new ArrayList<>();
 
-	public void setId(String id) {
-		this.id = id;
-	}
+    /** Hidden from candidates — used for judging */
+    private List<TestCase> testCases       = new ArrayList<>();
 
-	public String getTitle() {
-		return title;
-	}
+    /** Shown to candidates as examples */
+    private List<TestCase> sampleTestCases = new ArrayList<>();
 
-	public void setTitle(String title) {
-		this.title = title;
-	}
+    private int timeLimitMs   = 2000;
+    private int memoryLimitMb = 256;
 
-	public String getDescription() {
-		return description;
-	}
+    private String createdBy;
 
-	public void setDescription(String description) {
-		this.description = description;
-	}
+    // ── Getters & Setters ───────────────────────────────────────────────────
 
-	public String getDifficulty() {
-		return difficulty;
-	}
+    public String getId() { return id; }
+    public void setId(String id) { this.id = id; }
 
-	public void setDifficulty(String difficulty) {
-		this.difficulty = difficulty;
-	}
+    public String getTitle() { return title; }
+    public void setTitle(String title) { this.title = title; }
 
-	public List<TestCase> getTestCases() {
-		return testCases;
-	}
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
 
-	public void setTestCases(List<TestCase> testCases) {
-		this.testCases = testCases;
-	}
+    public String getDifficulty() { return difficulty; }
+    public void setDifficulty(String difficulty) { this.difficulty = difficulty; }
 
-	public int getTimeLimitMs() {
-		return timeLimitMs;
-	}
+    public String getInputFormat() { return inputFormat; }
+    public void setInputFormat(String inputFormat) { this.inputFormat = inputFormat; }
 
-	public void setTimeLimitMs(int timeLimitMs) {
-		this.timeLimitMs = timeLimitMs;
-	}
+    public String getOutputFormat() { return outputFormat; }
+    public void setOutputFormat(String outputFormat) { this.outputFormat = outputFormat; }
 
-	public int getMemoryLimitMb() {
-		return memoryLimitMb;
-	}
+    public String getConstraints() { return constraints; }
+    public void setConstraints(String constraints) { this.constraints = constraints; }
 
-	public void setMemoryLimitMb(int memoryLimitMb) {
-		this.memoryLimitMb = memoryLimitMb;
-	}
+    public List<String> getTags() { return tags; }
+    public void setTags(List<String> tags) { this.tags = tags; }
 
-	public String getCreatedBy() {
-		return createdBy;
-	}
+    public List<String> getHints() { return hints; }
+    public void setHints(List<String> hints) { this.hints = hints; }
 
-	public void setCreatedBy(String createdBy) {
-		this.createdBy = createdBy;
-	}
+    public List<TestCase> getTestCases() { return testCases; }
+    public void setTestCases(List<TestCase> testCases) { this.testCases = testCases; }
 
-	private int timeLimitMs;
-    private int memoryLimitMb;
+    public List<TestCase> getSampleTestCases() { return sampleTestCases; }
+    public void setSampleTestCases(List<TestCase> sampleTestCases) { this.sampleTestCases = sampleTestCases; }
 
-    private String createdBy; // recruiter email
+    public int getTimeLimitMs() { return timeLimitMs; }
+    public void setTimeLimitMs(int timeLimitMs) { this.timeLimitMs = timeLimitMs; }
+
+    public int getMemoryLimitMb() { return memoryLimitMb; }
+    public void setMemoryLimitMb(int memoryLimitMb) { this.memoryLimitMb = memoryLimitMb; }
+
+    public String getCreatedBy() { return createdBy; }
+    public void setCreatedBy(String createdBy) { this.createdBy = createdBy; }
 }
