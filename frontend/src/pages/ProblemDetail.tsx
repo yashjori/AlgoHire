@@ -16,7 +16,6 @@ import {
   Lightbulb,
   AlertCircle,
   Eye,
-  EyeOff,
   RotateCcw,
   Cpu,
 } from 'lucide-react'
