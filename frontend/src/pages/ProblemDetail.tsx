@@ -87,12 +87,12 @@ export default function ProblemDetail() {
 
   const setupAntiCheat = () => {
     const handleTabSwitch = () => setTabSwitches(p => p + 1)
-    const handleCopy = () => setCopyEvents(p => p + 1)
+    const handlePaste = () => setCopyEvents(p => p + 1)
     window.addEventListener('blur', handleTabSwitch)
-    window.addEventListener('copy', handleCopy)
+    window.addEventListener('paste', handlePaste)
     return () => {
       window.removeEventListener('blur', handleTabSwitch)
-      window.removeEventListener('copy', handleCopy)
+      window.removeEventListener('paste', handlePaste)
     }
   }
 
