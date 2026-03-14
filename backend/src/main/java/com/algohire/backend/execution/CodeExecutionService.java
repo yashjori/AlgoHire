@@ -72,8 +72,8 @@ public class CodeExecutionService {
             case "TYPESCRIPT" -> new LangConfig(
                     "node:20-slim",
                     "solution.ts",
-                    List.of("npx", "ts-node", "--version"), // ts-node pre-installed in image
-                    List.of("npx", "ts-node", "/app/solution.ts")
+                    List.of("sh", "-c", "npx tsc --target ES2020 --module commonjs --outDir /app /app/solution.ts 2>&1"),
+                    List.of("node", "/app/solution.js")
             );
             case "GO" -> new LangConfig(
                     "golang:1.22-alpine",
@@ -266,10 +266,6 @@ public class CodeExecutionService {
         submission.setSuspicious(antiCheat.suspicious());
         submission.setCheatReason(String.join(", ", antiCheat.reasons()));
         submissionRepository.save(submission);
-
-        if ("ACCEPTED".equals(result.getVerdict()) && !submission.isSuspicious()) {
-            leaderboardService.updateScore(submission.getProblemId(), submission.getCandidateEmail(), submission.getExecutionTimeMs());
-        }
     }
 
     private void cleanup(Path tempDir) {
