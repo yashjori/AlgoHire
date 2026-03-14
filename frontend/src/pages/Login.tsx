@@ -18,24 +18,13 @@ export default function Login() {
     setLoading(true)
 
     try {
-      const token = await authApi.login(email, password)
+      const data = await authApi.login(email, password)
       
-      // Set token first so it's available for subsequent API calls
-      useAuthStore.getState().setAuth(token, {
-        id: '',
-        name: '',
-        email: email,
-        role: 'CANDIDATE' as const,
-      })
-      
-      // Now fetch user details with the token
-      const user = await userApi.getCurrentUser()
-      
-      setAuth(token, {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
+      setAuth(data.token, {
+        id: data.id,
+        name: data.name,
+        email: data.email,
+        role: data.role,
       })
       
       toast.success('Welcome back!')
