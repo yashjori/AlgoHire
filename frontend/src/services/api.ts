@@ -190,8 +190,7 @@ export const authApi = {
   },
   login: async (email: string, password: string) => {
     const response = await api.post('/auth/login', { email, password })
-    const token = typeof response.data === 'string' ? response.data : response.data.token || response.data
-    return token
+    return response.data
   },
 }
 
