@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
-  Trophy, Medal, Award, ArrowLeft, Clock, User, Code2
+  Trophy, Medal, Award, ArrowLeft, Clock, User
 } from 'lucide-react'
 import { leaderboardApi, problemApi, LeaderboardEntry, Problem } from '../services/api'
 import { useAuthStore } from '../store/authStore'
