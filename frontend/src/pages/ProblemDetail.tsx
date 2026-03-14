@@ -349,7 +349,7 @@ export default function ProblemDetail() {
                     <RotateCcw className="w-4 h-4" />
                   </button>
                   <select value={language} onChange={e => setLanguage(e.target.value as Language)}
-                    className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
+                    className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-gray text-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
                     {LANGUAGES.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
                   </select>
                 </div>
