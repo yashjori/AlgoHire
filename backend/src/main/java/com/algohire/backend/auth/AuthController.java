@@ -57,7 +57,14 @@ public class AuthController {
 
         String token = jwtUtil.generateToken(user.getUsername());
 
-        return ResponseEntity.ok(token);
+        java.util.Map<String, Object> response = new java.util.HashMap<>();
+        response.put("token", token);
+        response.put("id", user.getId());
+        response.put("name", user.getName());
+        response.put("email", user.getEmail());
+        response.put("role", user.getRole());
+
+        return ResponseEntity.ok(response);
     }
 
 }
