@@ -14,24 +14,24 @@ public class AntiCheatService {
 
         long solveMs = request.getSolveTimeMs();
 
-        // Solved impossibly fast (< 5 seconds) AND code is non-trivial
-        if (solveMs < 5_000 && request.getCode() != null && request.getCode().length() > 50) {
-            reasons.add("Solution submitted in under 5 seconds");
+        // Solved impossibly fast (< 30 seconds) AND code is non-trivial
+        if (solveMs < 30_000 && request.getCode() != null && request.getCode().length() > 50) {
+            reasons.add("Solution submitted in under 30 seconds");
         }
 
-        // Large solution (>500 chars) submitted very quickly (<15s)
-        if (request.getCode() != null && request.getCode().length() > 500 && solveMs < 15_000) {
+        // Large solution (>500 chars) submitted very quickly (<60s)
+        if (request.getCode() != null && request.getCode().length() > 500 && solveMs < 60_000) {
             reasons.add("Large solution submitted suspiciously fast");
         }
 
         // Excessive tab switches (may indicate looking up solutions)
-        if (request.getTabSwitches() > 10) {
+        if (request.getTabSwitches() > 15) {
             reasons.add("Excessive tab switches: " + request.getTabSwitches());
         }
 
-        // Multiple copy events (may indicate pasted code)
-        if (request.getCopyEvents() > 3) {
-            reasons.add("Multiple copy events detected: " + request.getCopyEvents());
+        // Multiple paste events (may indicate pasted code)
+        if (request.getCopyEvents() > 5) {
+            reasons.add("Multiple paste events detected: " + request.getCopyEvents());
         }
 
         return new AntiCheatResult(!reasons.isEmpty(), reasons);
