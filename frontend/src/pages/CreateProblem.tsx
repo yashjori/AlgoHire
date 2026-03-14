@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { motion, AnimatePresence } from 'framer-motion'
-import { Plus, X, Save, Tag, Lightbulb, ChevronDown, ChevronUp } from 'lucide-react'
+import { motion } from 'framer-motion'
+import { Plus, X, Save, Tag, Lightbulb } from 'lucide-react'
 import { problemApi, TestCase } from '../services/api'
 import toast from 'react-hot-toast'
 
@@ -33,7 +33,6 @@ export default function CreateProblem() {
     { input: '', expectedOutput: '' },
   ])
   const [loading, setLoading] = useState(false)
-  const [showAdvanced, setShowAdvanced] = useState(false)
 
   const toggleTag = (tag: string) => {
     setTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag])
