@@ -32,9 +32,7 @@ export default function Submissions() {
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [filter, setFilter] = useState<string>('ALL')
 
-  if (user?.role === 'RECRUITER') return <Navigate to="/" replace />
-
-  useEffect(() => {
+   useEffect(() => {
     submissionApi.getMySubmissions()
       .then(data => setSubmissions(data.sort((a, b) =>
         new Date(b.submittedAt ?? 0).getTime() - new Date(a.submittedAt ?? 0).getTime()
@@ -42,6 +40,9 @@ export default function Submissions() {
       .catch(() => toast.error('Failed to load submissions'))
       .finally(() => setLoading(false))
   }, [])
+  if (user?.role === 'RECRUITER') return <Navigate to="/" replace />
+
+ 
 
   const verdicts = ['ALL', ...Array.from(new Set(submissions.map(s => s.verdict)))]
   const filtered = filter === 'ALL' ? submissions : submissions.filter(s => s.verdict === filter)

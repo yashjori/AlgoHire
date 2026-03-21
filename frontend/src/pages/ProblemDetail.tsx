@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import Editor from '@monaco-editor/react'
+import { aiApi } from '../services/api'
 import {
   Play,
   Send,
@@ -64,6 +65,26 @@ export default function ProblemDetail() {
   const [customInput, setCustomInput] = useState('')
   const [customOutput, setCustomOutput] = useState('')
   const [activeTab, setActiveTab] = useState<'sample' | 'custom'>('sample')
+      // ← Add this with your other state declarations (after const [aiHint, setAiHint] = useState<string>(''); )
+  const [aiHint, setAiHint] = useState<string>('');
+
+  const getAIHint = async () => {
+    if (!code.trim()) {
+      toast.error('Write some code first!');
+      return;
+    }
+
+    try {
+      setAiHint('🤖 Groq AI thinking (1-2 sec)...');
+      const hint = await aiApi.getCodeHint(code);   // ← now using central api
+      setAiHint(hint);
+      toast.success('🚀 AI Hint Received!');
+    } catch (error: any) {
+      console.error(error);
+      setAiHint('❌ Error: Make sure backend is running + Groq key is correct');
+      toast.error('Backend not reachable — check terminal');
+    }
+  };
 
   // Anti-cheat (candidate only)
   const solveStartTime = useRef(Date.now())
@@ -123,7 +144,12 @@ export default function ProblemDetail() {
 
   // Run against sample test cases (no submission saved)
   const handleRun = async () => {
-    if (!problem || !id) return
+  if (!code.trim()) {
+    toast.error("Write some code first!");
+    return;
+  }
+
+  if (!problem || !id) return;
     setRunning(true)
     setRunResult(null)
     try {
@@ -406,11 +432,18 @@ export default function ProblemDetail() {
             </div>
 
             {/* Action Buttons */}
-            <div className="flex gap-3">
+                        {/* Action Buttons + AI Button */}
+            <div className="flex flex-wrap gap-3">
               <motion.button onClick={activeTab === 'custom' ? handleRunCustom : handleRun}
                 disabled={running || submitting || !code.trim()}
                 className="flex-1 bg-white/10 hover:bg-white/20 text-white py-3 rounded-xl font-semibold flex justify-center items-center gap-2 disabled:opacity-50 transition-colors border border-white/10">
                 {running ? <><Loader2 className="animate-spin w-5 h-5" /> Running…</> : <><Play className="w-5 h-5" /> Run</>}
+              </motion.button>
+
+              <motion.button onClick={getAIHint}
+                disabled={!code.trim()}
+                className="flex-1 bg-gradient-to-r from-purple-600 via-pink-600 to-violet-600 hover:brightness-110 text-white py-3 rounded-xl font-semibold flex justify-center items-center gap-2 transition-all active:scale-95">
+                ✨ <Lightbulb className="w-5 h-5" /> Get Groq AI Hint
               </motion.button>
 
               <motion.button onClick={handleSubmit}
@@ -442,8 +475,22 @@ export default function ProblemDetail() {
                   })()}
                   {runResult.error && <pre className="mt-2 text-xs text-red-300 bg-red-900/20 p-2 rounded-lg overflow-x-auto">{runResult.error}</pre>}
                   {runResult.message && !runResult.error && <p className="mt-1 text-sm text-gray-400">{runResult.message}</p>}
+                              {/* AI Hint Result */}
+           
                 </motion.div>
               )}
+               <AnimatePresence>
+              {aiHint && (
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                  className="glass rounded-2xl p-4 border border-purple-500/50 bg-purple-950/30">
+                  <div className="flex items-center gap-2 text-purple-400 font-semibold mb-2">
+                    🤖 Groq AI Hint (Llama-3)
+                    <button onClick={() => setAiHint('')} className="ml-auto text-xs underline">clear</button>
+                  </div>
+                  <pre className="text-sm text-green-300 whitespace-pre-wrap font-mono bg-black/40 p-3 rounded">{aiHint}</pre>
+                </motion.div>
+              )}
+            </AnimatePresence>
             </AnimatePresence>
 
             {/* Submit Result */}

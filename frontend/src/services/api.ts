@@ -273,4 +273,21 @@ export const userApi = {
   },
 }
 
+export const aiApi = {
+  /**
+   * Get smart coding hint using Groq + Spring AI
+   * @param code - the current code from Monaco editor
+   */
+  getCodeHint: async (code: string): Promise<string> => {
+    const response = await api.post(
+      '/ai/code-hint',           // ← matches your backend @RequestMapping("/api/ai") or adjust if needed
+      code,
+      {
+        headers: { 'Content-Type': 'text/plain' }   // important because we send raw string
+      }
+    );
+    return response.data as string;
+  },
+};
+
 export default api
