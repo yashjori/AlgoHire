@@ -5,7 +5,7 @@ import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/ai")
+@RequestMapping("/api/ai")
 @CrossOrigin(origins = "*")
 public class AiController {
 
